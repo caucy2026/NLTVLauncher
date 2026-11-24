@@ -36,7 +36,7 @@ class TvContentRepository(context: Context) {
         val authority = providerAuthority() ?: return TvInput(TvAccess.ProviderMissing)
         return try {
             val watch = queryPrograms(
-                uri = listingsUri(authority, "watch_next/program"),
+                uri = watchNextUri(authority),
                 channelColumn = false,
             )
             val channels = queryChannels(authority)
@@ -46,11 +46,14 @@ class TvContentRepository(context: Context) {
             )
             val permissionGranted = hasListingsPermission()
             val nothingReadable = watch.isEmpty() && channels.isEmpty() && programs.isEmpty()
+            val emptyListings = watch.isEmpty() && programs.isEmpty()
+            // Apps publish Watch Next through android.tvprovider. A device that only answers on
+            // the legacy android.media.tv authority has no such channel, so an empty result there
+            // is not "nothing played yet" but "this system cannot carry Watch Next at all".
+            val legacyOnly = authority == LEGACY_TV_PROVIDER_AUTHORITY
             val access = when {
                 providerVanished -> TvAccess.ProviderMissing
-                // Channels alone are not listings: without the Watch Next tables there is
-                // nothing this screen could ever show, so say that instead of "empty".
-                listingsUnsupported && watch.isEmpty() && programs.isEmpty() ->
+                (listingsUnsupported || legacyOnly) && emptyListings ->
                     TvAccess.ListingsUnsupported
                 !permissionGranted && nothingReadable -> TvAccess.PermissionDenied
                 else -> TvAccess.Ok
@@ -97,6 +100,17 @@ class TvContentRepository(context: Context) {
 
     private fun listingsUri(authority: String, path: String): android.net.Uri =
         android.net.Uri.parse("content://$authority/$path")
+
+    /**
+     * Watch Next lives at a different path per authority: the modern authority uses the
+     * two-segment ".../watch_next/program", the legacy one the single table ".../watch_next_program".
+     */
+    private fun watchNextUri(authority: String): android.net.Uri =
+        if (authority == TV_PROVIDER_AUTHORITY) {
+            listingsUri(authority, "watch_next/program")
+        } else {
+            listingsUri(authority, "watch_next_program")
+        }
 
     private fun hasListingsPermission(): Boolean {
         val names = LISTING_PERMISSIONS

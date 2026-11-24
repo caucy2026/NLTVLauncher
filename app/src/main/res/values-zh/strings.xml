@@ -26,7 +26,7 @@
     <string name="empty_tv">「继续观看」还是空的。在支持继续观看的应用里播放一次，就会出现在这里。</string>
     <string name="permission_tv">未授予 TV 列表读取权限，因此不显示继续观看。</string>
     <string name="provider_tv">此设备没有 TV 列表提供者，无法在这里读取继续观看。</string>
-    <string name="unsupported_tv">此设备的 TV 提供者没有「继续观看」数据表，因此这里没有可列出的内容。</string>
+    <string name="unsupported_tv">此系统只提供旧版 TV 数据接口（android.media.tv），没有 Watch Next 通道，所以这里列不出内容。</string>
     <string name="no_apps">没有其它可启动的应用。</string>
     <string name="ok">确定</string>
     <string name="close">关闭</string>
