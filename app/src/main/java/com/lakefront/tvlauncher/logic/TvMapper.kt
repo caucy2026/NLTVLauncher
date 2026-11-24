@@ -5,8 +5,6 @@ object TvMapper {
         when (input.access) {
             TvAccess.ProviderMissing -> return TvSnapshot.Unavailable(TvUnavailable.ProviderMissing)
             TvAccess.PermissionDenied -> return TvSnapshot.Unavailable(TvUnavailable.PermissionDenied)
-            TvAccess.ListingsUnsupported ->
-                return TvSnapshot.Unavailable(TvUnavailable.ListingsUnsupported)
             TvAccess.Ok -> Unit
         }
 

@@ -53,13 +53,4 @@ class TvFailuresTest {
         val snapshot = TvMapper.map(TvInput(TvAccess.Ok))
         assertEquals(TvSnapshot.Unavailable(TvUnavailable.Empty), snapshot)
     }
-
-    @Test
-    fun providerWithoutWatchNextTablesIsNotReportedAsMissing() {
-        val snapshot = TvMapper.map(TvInput(TvAccess.ListingsUnsupported))
-        assertEquals(
-            TvSnapshot.Unavailable(TvUnavailable.ListingsUnsupported),
-            snapshot,
-        )
-    }
 }
