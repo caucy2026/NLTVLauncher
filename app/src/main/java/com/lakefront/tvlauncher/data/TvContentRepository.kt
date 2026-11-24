@@ -24,26 +24,36 @@ class TvContentRepository(context: Context) {
     private val appContext = context.applicationContext
     private val resolver = appContext.contentResolver
 
+    /** Set when a query fails because the authority does not exist any more. */
+    private var providerVanished = false
+
+    /** Set when the provider exists but has no watch_next/preview_program table. */
+    private var listingsUnsupported = false
+
     fun load(): TvInput {
-        if (!providerPresent()) {
-            return TvInput(TvAccess.ProviderMissing)
-        }
+        providerVanished = false
+        listingsUnsupported = false
+        val authority = providerAuthority() ?: return TvInput(TvAccess.ProviderMissing)
         return try {
             val watch = queryPrograms(
-                uri = TvContractCompat.WatchNextPrograms.CONTENT_URI,
+                uri = listingsUri(authority, "watch_next/program"),
                 channelColumn = false,
             )
-            val channels = queryChannels()
+            val channels = queryChannels(authority)
             val programs = queryPrograms(
-                uri = TvContractCompat.PreviewPrograms.CONTENT_URI,
+                uri = listingsUri(authority, "preview_program"),
                 channelColumn = true,
             )
             val permissionGranted = hasListingsPermission()
             val nothingReadable = watch.isEmpty() && channels.isEmpty() && programs.isEmpty()
-            val access = if (!permissionGranted && nothingReadable) {
-                TvAccess.PermissionDenied
-            } else {
-                TvAccess.Ok
+            val access = when {
+                providerVanished -> TvAccess.ProviderMissing
+                // Channels alone are not listings: without the Watch Next tables there is
+                // nothing this screen could ever show, so say that instead of "empty".
+                listingsUnsupported && watch.isEmpty() && programs.isEmpty() ->
+                    TvAccess.ListingsUnsupported
+                !permissionGranted && nothingReadable -> TvAccess.PermissionDenied
+                else -> TvAccess.Ok
             }
             val labels = appLabels(channels.mapNotNull { it.packageName }.distinct())
             TvInput(
@@ -62,22 +72,31 @@ class TvContentRepository(context: Context) {
         }
     }
 
-    private fun providerPresent(): Boolean {
-        return try {
-            val client = resolver.acquireUnstableContentProviderClient(TvContractCompat.Channels.CONTENT_URI)
-            if (client == null) {
-                false
-            } else {
-                client.close()
-                true
+    /**
+     * Picks the authority this device actually publishes. Android TV builds answer on
+     * android.tvprovider; TV builds without the Google TV provider (and the AndroidX
+     * TvContractCompat constants) only answer on the legacy android.media.tv authority. Querying
+     * just android.tvprovider read nothing at all on such devices.
+     */
+    private fun providerAuthority(): String? {
+        for (authority in TV_PROVIDER_AUTHORITIES) {
+            val info = try {
+                appContext.packageManager.resolveContentProvider(authority, 0)
+            } catch (error: Exception) {
+                Log.i(TAG, "Provider lookup failed for $authority: ${error.message}")
+                null
             }
-        } catch (error: SecurityException) {
-            true
-        } catch (error: Exception) {
-            Log.i(TAG, "No TV provider: ${error.message}")
-            false
+            if (info != null) {
+                Log.i(TAG, "Using TV provider authority $authority")
+                return authority
+            }
         }
+        Log.i(TAG, "No TV listings provider: ${TV_PROVIDER_AUTHORITIES.joinToString()}")
+        return null
     }
+
+    private fun listingsUri(authority: String, path: String): android.net.Uri =
+        android.net.Uri.parse("content://$authority/$path")
 
     private fun hasListingsPermission(): Boolean {
         val names = LISTING_PERMISSIONS
@@ -86,7 +105,7 @@ class TvContentRepository(context: Context) {
         }
     }
 
-    private fun queryChannels(): List<RawChannel> {
+    private fun queryChannels(authority: String): List<RawChannel> {
         val projection = arrayOf(
             android.provider.BaseColumns._ID,
             TvContractCompat.Channels.COLUMN_DISPLAY_NAME,
@@ -94,7 +113,7 @@ class TvContentRepository(context: Context) {
             TvContractCompat.Channels.COLUMN_BROWSABLE,
             TvContractCompat.BaseTvColumns.COLUMN_PACKAGE_NAME,
         )
-        val cursor = queryCursor(TvContractCompat.Channels.CONTENT_URI, projection) ?: return emptyList()
+        val cursor = queryCursor(listingsUri(authority, "channel"), projection) ?: return emptyList()
         cursor.use { rows ->
             val result = ArrayList<RawChannel>()
             while (rows.moveToNext()) {
@@ -159,8 +178,36 @@ class TvContentRepository(context: Context) {
         } catch (error: SecurityException) {
             throw error
         } catch (error: Exception) {
+            classifyQueryFailure(error)
             Log.i(TAG, "Query failed for $uri: ${error.message}")
             null
+        }
+    }
+
+    /**
+     * Separates "the authority is gone" from "this provider has no such table". The legacy
+     * android.media.tv provider on plain TV builds answers for /channel but returns
+     * "Unknown URI … /watch_next/program", which is not a missing provider.
+     */
+    private fun classifyQueryFailure(error: Exception) {
+        val message = error.message?.lowercase().orEmpty()
+        val authorityGone = "could not find provider" in message ||
+            "unable to find provider" in message ||
+            "unknown authority" in message ||
+            "no provider" in message ||
+            "unknown url" in message
+        if (authorityGone) {
+            providerVanished = true
+            return
+        }
+        if ("unknown uri" in message) {
+            listingsUnsupported = true
+            return
+        }
+        if ("illegalstate" in error.javaClass.simpleName.lowercase() &&
+            "provider" in message
+        ) {
+            providerVanished = true
         }
     }
 
@@ -212,6 +259,10 @@ class TvContentRepository(context: Context) {
 
     companion object {
         private const val TAG = "LakeTv"
+        const val TV_PROVIDER_AUTHORITY = "android.tvprovider"
+        const val LEGACY_TV_PROVIDER_AUTHORITY = "android.media.tv"
+        val TV_PROVIDER_AUTHORITIES = arrayOf(TV_PROVIDER_AUTHORITY, LEGACY_TV_PROVIDER_AUTHORITY)
+
         const val READ_TV_LISTINGS = "android.permission.READ_TV_LISTINGS"
         const val LEGACY_READ_TV_LISTINGS = "com.android.providers.tv.permission.READ_TV_LISTINGS"
         val LISTING_PERMISSIONS = arrayOf(

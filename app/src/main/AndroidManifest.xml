@@ -62,6 +62,7 @@
             <data android:scheme="market" />
         </intent>
         <provider android:authorities="android.media.tv" />
+        <provider android:authorities="android.tvprovider" />
         <package android:name="com.android.providers.tv" />
     </queries>
 

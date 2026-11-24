@@ -4,12 +4,16 @@ enum class TvAccess {
     Ok,
     PermissionDenied,
     ProviderMissing,
+
+    /** A TV provider answers, but it has none of the Watch Next tables. */
+    ListingsUnsupported,
 }
 
 enum class TvUnavailable {
     Empty,
     PermissionDenied,
     ProviderMissing,
+    ListingsUnsupported,
 }
 
 data class RawProgram(

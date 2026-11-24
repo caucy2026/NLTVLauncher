@@ -110,6 +110,7 @@ fun HomeScreen(
                     TvUnavailable.Empty -> stringResource(R.string.empty_tv)
                     TvUnavailable.PermissionDenied -> stringResource(R.string.permission_tv)
                     TvUnavailable.ProviderMissing -> stringResource(R.string.provider_tv)
+                    TvUnavailable.ListingsUnsupported -> stringResource(R.string.unsupported_tv)
                 },
             )
         }
