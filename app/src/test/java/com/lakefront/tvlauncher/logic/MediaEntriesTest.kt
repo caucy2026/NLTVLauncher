@@ -1,6 +1,7 @@
 package com.lakefront.tvlauncher.logic
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -34,10 +35,22 @@ class MediaEntriesTest {
     }
 
     @Test
-    fun dropsSessionsWithoutUsableProgress() {
-        assertNull(MediaEntries.toRow(listOf(entry(position = 0, duration = 600_000)), "Continue"))
+    fun keepsSessionsWithoutADurationButDrawsNoProgress() {
+        val row = MediaEntries.toRow(listOf(entry(position = 60_000, duration = 0)), "Continue")
+        assertNotNull(row)
+        assertNull(row!!.posters.first().progress)
+    }
+
+    @Test
+    fun aSessionAtTheVeryStartStillCounts() {
+        val row = MediaEntries.toRow(listOf(entry(position = 0, duration = 600_000)), "Continue")
+        assertNotNull(row)
+        assertNull(row!!.posters.first().progress)
+    }
+
+    @Test
+    fun dropsFinishedAndUntitledSessions() {
         assertNull(MediaEntries.toRow(listOf(entry(position = 600_000, duration = 600_000)), "Continue"))
-        assertNull(MediaEntries.toRow(listOf(entry(duration = 0)), "Continue"))
         assertNull(MediaEntries.toRow(listOf(entry(title = "   ")), "Continue"))
     }
 
@@ -61,6 +74,13 @@ class MediaEntriesTest {
         val row = MediaEntries.toRow(many, "Continue", limit = 5)
         assertNotNull(row)
         assertEquals(5, row!!.posters.size)
-        assertTrue(row.posters.first().title == "T12")
+        assertEquals("T12", row.posters.first().title)
+    }
+
+    @Test
+    fun finishedWithinTheMarginIsNotResumable() {
+        assertTrue(ContinueWatching.isResumable(entry(position = 60_000, duration = 600_000)))
+        assertFalse(ContinueWatching.isResumable(entry(position = 590_000, duration = 600_000)))
+        assertFalse(ContinueWatching.isResumable(entry(position = 600_000, duration = 600_000)))
     }
 }

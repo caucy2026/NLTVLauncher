@@ -18,6 +18,7 @@ import androidx.tvprovider.media.tv.TvContractCompat
 import com.lakefront.tvlauncher.R
 import com.lakefront.tvlauncher.data.AppRepository
 import com.lakefront.tvlauncher.data.LauncherPreferences
+import com.lakefront.tvlauncher.data.ContinueWatchingStore
 import com.lakefront.tvlauncher.data.MediaSessionRepository
 import com.lakefront.tvlauncher.data.PinStore
 import com.lakefront.tvlauncher.data.SystemStatusMonitor
@@ -109,6 +110,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val appsRepo = AppRepository(app)
     private val tvRepo = TvContentRepository(app)
     private val mediaRepo = MediaSessionRepository(app)
+    private val continueStore = ContinueWatchingStore(app)
     private val wallpapers = WallpaperStore(app, preferences)
     private val statusMonitor = SystemStatusMonitor(app)
     private val gate = Mutex()
@@ -175,11 +177,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun refreshMedia() {
         val app = getApplication<Application>()
         val enabled = mediaRepo.enabled()
-        val row = if (enabled) {
-            MediaEntries.toRow(mediaRepo.load(), app.getString(R.string.continue_watching))
-        } else {
-            null
-        }
+        val live = if (enabled) mediaRepo.load() else emptyList()
+        // Live sessions win, but the stored snapshot is what keeps the row populated once the
+        // player has released its session.
+        val entries = if (live.isEmpty()) continueStore.load() else continueStore.record(live)
+        val row = MediaEntries.toRow(entries, app.getString(R.string.continue_watching))
         _state.update { it.copy(continueRow = row, mediaAccess = enabled) }
     }
 

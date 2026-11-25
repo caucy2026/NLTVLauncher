@@ -45,13 +45,18 @@ class MediaSessionRepository(context: Context) {
     }
 
     private fun toEntry(controller: MediaController): MediaEntry? {
-        val metadata = controller.metadata ?: return null
-        val title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE)?.trim().orEmpty()
-        if (title.isEmpty()) return null
-        val subtitle = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
-            ?: metadata.getString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE)
-        val art = metadata.getString(MediaMetadata.METADATA_KEY_ART_URI)
-            ?: metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
+        val metadata = controller.metadata
+        // Players fill different keys: Cobalt leaves METADATA_KEY_TITLE empty for some items but
+        // still sets the display title or a queue title, so try them in turn instead of dropping
+        // the session outright.
+        val title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: metadata?.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: controller.queueTitle?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+            ?: return null
+        val subtitle = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST)
+            ?: metadata?.getString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE)
+        val art = metadata?.getString(MediaMetadata.METADATA_KEY_ART_URI)
+            ?: metadata?.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
         val state = controller.playbackState
         // The session's own PendingIntent is not an Intent URI, so reuse the app's launch intent:
         // tapping the card reopens the player that owns the session.
@@ -62,10 +67,12 @@ class MediaSessionRepository(context: Context) {
             title = title,
             subtitle = subtitle?.trim(),
             positionMs = state?.position ?: 0L,
-            durationMs = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION),
+            durationMs = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: 0L,
             artUri = art,
             intentUri = intentUri,
-            updatedAtMs = state?.lastPositionUpdateTime ?: 0L,
+            // Wall-clock time of the sample: PlaybackState.lastPositionUpdateTime is uptime, which
+            // makes every entry look decades old to the expiry rule.
+            updatedAtMs = System.currentTimeMillis(),
         )
     }
 
