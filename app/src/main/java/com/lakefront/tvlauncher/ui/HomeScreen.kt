@@ -118,7 +118,7 @@ fun HomeScreen(
         }
         AppsBlock(
             state = state,
-            upToStatus = state.tv !is TvSnapshot.Ready,
+            upToStatus = posterRows.isEmpty(),
             statusRequester = statusRequester,
             requesters = requesters,
             onOpenAllApps = onOpenAllApps,
