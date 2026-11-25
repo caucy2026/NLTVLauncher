@@ -56,6 +56,8 @@ To use it as the home screen, open system Settings and choose Lake TV Launcher a
 
 Installed apps and TV firmware often publish no Watch Next items and no preview channels. YouTube commonly publishes preview channels, Prime Video often publishes both, and Netflix varies by build. An empty row is not a bug in this launcher.
 
+What one specific device actually returns is recorded in [`docs/watch-next-adb3.md`](docs/watch-next-adb3.md): an ADT-3 eng build whose TV provider exists and answers, but where nothing publishes Watch Next or preview rows, so the row stays empty by design.
+
 The default background is the approved mountain-lake JPEG, copied byte for byte into `app/src/main/res/drawable-nodpi/bg_default_wallpaper.jpg`. Its SHA-256 is `cb59dfa440c8083d596c88316298330ac98683e01b069299939f3dc276888942`.
 
 Focus on the status icons and app tiles scales over about 160ms. That follows Android’s animator duration scale, so the motion is skipped when animations are turned off. At the real left or right end of the status row or the Apps row, another press in that direction nudges the current item and stays there. It does not wrap. Items that are only off-screen still move focus normally.
