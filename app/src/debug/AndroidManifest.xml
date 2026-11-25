@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug-only components. Never merged into a release build. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+            Read-only probe: dumps how many rows each TvProvider listing table returns for this
+            caller, and what the first rows look like. Start it explicitly:
+                adb shell am start -n com.lakefront.tvlauncher/com.lakefront.tvlauncher.debug.TvListingsProbeActivity
+            Read the result:
+                adb shell logcat -d -s LakeTvProbe
+        -->
+        <activity
+            android:name="com.lakefront.tvlauncher.debug.TvListingsProbeActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true" />
+    </application>
+</manifest>

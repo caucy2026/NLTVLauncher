@@ -118,7 +118,13 @@ class TvMapperTest {
         assertNull(TvMapper.playbackFraction(10_000, 10_000))
         assertNull(TvMapper.sanitizeIntentUri("   "))
         assertEquals(TvAccess.PermissionDenied, TvFailures.classify("SecurityException", "Permission denial"))
-        assertEquals(TvAccess.ProviderMissing, TvFailures.classify("IllegalArgumentException", "Unknown URI"))
+        // "Unknown URI" means the provider answers but has no such table: that is not a
+        // missing provider, so it must not be reported as one.
+        assertEquals(TvAccess.Unknown, TvFailures.classify("IllegalArgumentException", "Unknown URI"))
+        assertEquals(
+            TvAccess.ProviderMissing,
+            TvFailures.classify("IllegalStateException", "Could not find provider: android.media.tv"),
+        )
     }
 
     @Test

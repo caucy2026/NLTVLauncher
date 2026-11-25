@@ -5,6 +5,7 @@ object TvMapper {
         when (input.access) {
             TvAccess.ProviderMissing -> return TvSnapshot.Unavailable(TvUnavailable.ProviderMissing)
             TvAccess.PermissionDenied -> return TvSnapshot.Unavailable(TvUnavailable.PermissionDenied)
+            TvAccess.Unknown -> return TvSnapshot.Unavailable(TvUnavailable.Unknown)
             TvAccess.Ok -> Unit
         }
 
@@ -114,6 +115,15 @@ object TvFailures {
             "permission" in name ||
             "securityexception" in msg ||
             "permission denial" in msg
-        return if (denied) TvAccess.PermissionDenied else TvAccess.ProviderMissing
+        if (denied) return TvAccess.PermissionDenied
+        // Only these mean "there is no such provider". Any other failure is a real error and must
+        // not be reported as a missing provider: that turned database errors into
+        // "this device has no TV provider" on screen.
+        val missing = "could not find provider" in msg ||
+            "unable to find provider" in msg ||
+            "unknown authority" in msg ||
+            "no provider" in msg ||
+            "unknown url" in msg
+        return if (missing) TvAccess.ProviderMissing else TvAccess.Unknown
     }
 }

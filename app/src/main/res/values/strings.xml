@@ -26,6 +26,7 @@
     <string name="empty_tv">Nothing in Watch Next yet. Play something in a Watch Next app and it shows up here.</string>
     <string name="permission_tv">TV listings access was not granted, so Watch Next stays hidden.</string>
     <string name="provider_tv">This device has no TV listings provider, so Watch Next cannot be read here.</string>
+    <string name="unknown_tv">Reading the TV listings failed. The provider answered with an error, so Watch Next stays hidden.</string>
     <string name="no_apps">No other launchable apps are installed.</string>
     <string name="ok">OK</string>
     <string name="close">Close</string>

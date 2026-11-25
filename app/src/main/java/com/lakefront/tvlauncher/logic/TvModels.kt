@@ -4,12 +4,16 @@ enum class TvAccess {
     Ok,
     PermissionDenied,
     ProviderMissing,
+
+    /** Neither a permission problem nor a missing provider: the query itself failed. */
+    Unknown,
 }
 
 enum class TvUnavailable {
     Empty,
     PermissionDenied,
     ProviderMissing,
+    Unknown,
 }
 
 data class RawProgram(
