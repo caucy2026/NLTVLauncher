@@ -18,6 +18,7 @@ import androidx.tvprovider.media.tv.TvContractCompat
 import com.lakefront.tvlauncher.R
 import com.lakefront.tvlauncher.data.AppRepository
 import com.lakefront.tvlauncher.data.LauncherPreferences
+import com.lakefront.tvlauncher.data.MediaSessionRepository
 import com.lakefront.tvlauncher.data.PinStore
 import com.lakefront.tvlauncher.data.SystemStatusMonitor
 import com.lakefront.tvlauncher.data.TvContentRepository
@@ -31,6 +32,8 @@ import com.lakefront.tvlauncher.logic.ShortcutDecision
 import com.lakefront.tvlauncher.logic.ShortcutMatch
 import com.lakefront.tvlauncher.ui.components.warmAppIcons
 import com.lakefront.tvlauncher.logic.Poster
+import com.lakefront.tvlauncher.logic.PosterRow
+import com.lakefront.tvlauncher.logic.MediaEntries
 import com.lakefront.tvlauncher.logic.RadioState
 import com.lakefront.tvlauncher.logic.SystemStatus
 import com.lakefront.tvlauncher.logic.TvSnapshot
@@ -83,6 +86,10 @@ data class LauncherUiState(
     val appsLoaded: Boolean = false,
     val tv: TvSnapshot = TvSnapshot.Unavailable(TvUnavailable.Empty),
     val tvLoading: Boolean = true,
+    /** Continue-watching row built from active media sessions, independent of TvProvider. */
+    val continueRow: PosterRow? = null,
+    /** Whether the user granted notification access, which the media sessions need. */
+    val mediaAccess: Boolean = false,
     val wallpaperUri: String? = null,
     val status: SystemStatus = SystemStatus("--:--", RadioState.Absent, RadioState.Absent),
 )
@@ -101,6 +108,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val pinStore = PinStore(preferences)
     private val appsRepo = AppRepository(app)
     private val tvRepo = TvContentRepository(app)
+    private val mediaRepo = MediaSessionRepository(app)
     private val wallpapers = WallpaperStore(app, preferences)
     private val statusMonitor = SystemStatusMonitor(app)
     private val gate = Mutex()
@@ -157,12 +165,29 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
         refreshApps()
         refreshTv()
+        refreshMedia()
+    }
+
+    /**
+     * Continue-watching from media sessions. Cheap enough to run on every resume: it only walks
+     * the sessions the system already tracks.
+     */
+    fun refreshMedia() {
+        val app = getApplication<Application>()
+        val enabled = mediaRepo.enabled()
+        val row = if (enabled) {
+            MediaEntries.toRow(mediaRepo.load(), app.getString(R.string.continue_watching))
+        } else {
+            null
+        }
+        _state.update { it.copy(continueRow = row, mediaAccess = enabled) }
     }
 
     fun onResume() {
         statusMonitor.poke()
         refreshApps()
         refreshTv()
+        refreshMedia()
         if (!awaitingReturn) return
         awaitingReturn = false
         val key = restoreFocusKey ?: when (_state.value.screen) {

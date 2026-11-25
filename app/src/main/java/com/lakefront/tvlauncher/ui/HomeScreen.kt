@@ -67,11 +67,9 @@ fun HomeScreen(
     onHomeFocus: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val posterRows = (state.tv as? TvSnapshot.Ready)?.rows.orEmpty()
-    val showGuidance = HomeArrangement.guidanceSitsAboveApps(
-        loading = state.tvLoading,
-        posterRowCount = posterRows.size,
-    )
+    val continueRow = state.continueRow
+    val posterRows = listOfNotNull(continueRow) + (state.tv as? TvSnapshot.Ready)?.rows.orEmpty()
+    val showGuidance = posterRows.isEmpty() && !state.tvLoading
     val scroll = rememberScrollState()
     Column(modifier.fillMaxSize()) {
         Box(
@@ -106,11 +104,15 @@ fun HomeScreen(
         if (showGuidance) {
             val reason = (state.tv as? TvSnapshot.Unavailable)?.reason ?: TvUnavailable.Empty
             Guidance(
-                when (reason) {
-                    TvUnavailable.Empty -> stringResource(R.string.empty_tv)
-                    TvUnavailable.PermissionDenied -> stringResource(R.string.permission_tv)
-                    TvUnavailable.ProviderMissing -> stringResource(R.string.provider_tv)
-                    TvUnavailable.Unknown -> stringResource(R.string.unknown_tv)
+                if (!state.mediaAccess) {
+                    stringResource(R.string.continue_hint)
+                } else {
+                    when (reason) {
+                        TvUnavailable.Empty -> stringResource(R.string.empty_tv)
+                        TvUnavailable.PermissionDenied -> stringResource(R.string.permission_tv)
+                        TvUnavailable.ProviderMissing -> stringResource(R.string.provider_tv)
+                        TvUnavailable.Unknown -> stringResource(R.string.unknown_tv)
+                    }
                 },
             )
         }

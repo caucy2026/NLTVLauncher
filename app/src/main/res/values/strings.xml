@@ -2,6 +2,8 @@
 <resources>
     <string name="app_name">Lake TV Launcher</string>
     <string name="watch_next">Watch Next</string>
+    <string name="continue_watching">Continue watching</string>
+    <string name="continue_hint">Turn on notification access for this launcher to show what you were in the middle of watching.</string>
     <string name="apps">Apps</string>
     <string name="all_apps">All Apps</string>
     <string name="all_apps_heading">All apps</string>
