@@ -15,5 +15,22 @@
             android:excludeFromRecents="true"
             android:exported="true"
             android:noHistory="true" />
+
+        <!--
+            Publishes a media session with rich metadata, so other launchers (Google TV's included)
+            can be observed reacting to it:
+                adb shell am start -n com.lakefront.tvlauncher/com.lakefront.tvlauncher.debug.FakeSessionActivity
+        -->
+        <activity
+            android:name="com.lakefront.tvlauncher.debug.FakeSessionActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay" />
+
+        <!-- Same, but as a service so the session survives (the activity above is destroyed at once). -->
+        <service
+            android:name="com.lakefront.tvlauncher.debug.FakeSessionService"
+            android:exported="true" />
     </application>
 </manifest>

@@ -4,12 +4,16 @@ import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
+import android.net.Uri
 import android.util.Log
 import com.lakefront.tvlauncher.logic.MediaEntry
 import com.lakefront.tvlauncher.media.NowPlayingListenerService
+import java.io.File
+import java.io.FileOutputStream
 
 /**
  * Reads the media sessions the system already knows about.
@@ -57,6 +61,7 @@ class MediaSessionRepository(context: Context) {
             ?: metadata?.getString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE)
         val art = metadata?.getString(MediaMetadata.METADATA_KEY_ART_URI)
             ?: metadata?.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
+            ?: embeddedArtwork(controller.packageName, metadata)
         val state = controller.playbackState
         // The session's own PendingIntent is not an Intent URI, so reuse the app's launch intent:
         // tapping the card reopens the player that owns the session.
@@ -74,6 +79,27 @@ class MediaSessionRepository(context: Context) {
             // makes every entry look decades old to the expiry rule.
             updatedAtMs = System.currentTimeMillis(),
         )
+    }
+
+    /**
+     * Many players ship the cover as a bitmap (METADATA_KEY_ART) instead of a URI, so write it to
+     * the cache once and hand back a file path the image loader can use.
+     */
+    private fun embeddedArtwork(packageName: String, metadata: MediaMetadata?): String? {
+        val bitmap = metadata?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+            ?: metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+            ?: return null
+        val dir = File(appContext.cacheDir, "artwork").apply { mkdirs() }
+        val file = File(dir, "${packageName.hashCode().toUInt().toString(16)}.jpg")
+        return try {
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 88, out)
+            }
+            Uri.fromFile(file).toString()
+        } catch (error: Exception) {
+            Log.i(TAG, "artwork cache failed: ${error.message}")
+            null
+        }
     }
 
     private companion object {
